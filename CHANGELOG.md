@@ -6,12 +6,31 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
-### Fixed
-- Fix bug in AXI-Lite to register interface conversion
+## 0.2.1 - 2021-02-03
+### Changed
+- Update `axi` to `0.23.0`
+- Update `common_cells` to `1.21.0`
 
 ### Added
-- AXI to reg interface
-- Opensource release
+- Add ipapprox description
+
+## 0.2.0 - 2020-12-30
+### Fixed
+- Fix bug in AXI-Lite to register interface conversion
+- Fix minor style problems (`verible-lint`)
+
+## Removed
+- Remove `reg_intf_pkg.sv`. Type definitions are provided by `typedef.svh`.
+
+### Added
+- Add `reggen` tool from lowrisc.
+- Add `typedef` and `assign` macros.
+- Add `reg_cdc`.
+- Add `reg_demux`.
+- Add `reg_mux`.
+- Add `reg_to_mem`.
+- AXI to reg interface.
+- Open source release.
 
 ### Changed
 - Updated AXI dependency
