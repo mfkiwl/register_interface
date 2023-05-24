@@ -1,6 +1,6 @@
-# Copyright 2020 ETH Zurich and University of Bologna.
-# Licensed under the Apache License, Version 2.0, see LICENSE for details.
-# SPDX-License-Identifier: Apache-2.0
+# Copyright 2023 ETH Zurich and University of Bologna.
+# Solderpad Hardware License, Version 0.51, see LICENSE for details.
+# SPDX-License-Identifier: SHL-0.51
 
 # Run all lint checks
 name: lint
@@ -13,27 +13,20 @@ jobs:
   ################
   verilog:
     name: Verilog Sources
-    # This job runs on Linux (fixed ubuntu version)
-    runs-on: ubuntu-18.04
-    env:
-      VERIBLE_VERSION: 0.0-807-g10e7c71
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Verible
-      run: |
-        set -e
-        mkdir -p build/verible
-        cd build/verible
-        curl -Ls -o verible.tar.gz https://github.com/google/verible/releases/download/v$VERIBLE_VERSION/verible-v$VERIBLE_VERSION-Ubuntu-18.04-bionic-x86_64.tar.gz
-        sudo mkdir -p /tools/verible && sudo chmod 777 /tools/verible
-        tar -C /tools/verible -xf verible.tar.gz --strip-components=1
-        echo "PATH=$PATH:/tools/verible/bin" >> $GITHUB_ENV
-    # Run linter in hw/ip subdir
-    - name: Run Lint
-      run: |
-        echo "::add-matcher::.github/verible-lint-matcher.json"
-        find . -name "*sv" | xargs verible-verilog-lint --waiver_files lint/verible.waiver
-        echo "::remove-matcher owner=verible-lint-matcher::"
+      - uses: actions/checkout@v3
+      - uses: chipsalliance/verible-linter-action@main
+        with:
+          paths: |
+            ./src
+            ./vendor/lowrisc_opentitan/src
+          exclude_paths: |
+            ./src/test/test_regs_reg_top.sv
+          extra_args: "--rules=-interface-name-style --lint_fatal --parse_fatal --waiver_files lint/verible.waiver"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          reviewdog_reporter: github-check
+
 
   #####################
   # Vendor Up-to-Date #
@@ -43,16 +36,24 @@ jobs:
     name: Vendor Up-to-Date
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: 3.x
-    - name: Install requirements
-      run: pip install hjson
-    - name: Re-vendor and diff
-      run: |
-        find . \
-            -name '*.vendor.hjson' \
-            | xargs -n1 util/vendor.py --verbose \
-            && git diff --exit-code
+      - uses: actions/checkout@v2
+      - name: Install bender
+        run: curl --proto '=https' --tlsv1.2 https://pulp-platform.github.io/bender/init -sSf | sh -s -- 0.26.0
+      - name: Re-vendor and diff
+        run: ./bender import --refetch && git diff --exit-code
 
+  internal:
+    name: Internal CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror and check
+        uses: pulp-platform/pulp-actions/gitlab-ci@v2
+        # Skip on forks or pull requests from forks due to missing secrets.
+        if: >
+          github.repository == 'pulp-platform/register_interface' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          domain: iis-git.ee.ethz.ch
+          repo: github-mirror/register_interface
+          token: ${{ secrets.GITLAB_TOKEN }}
